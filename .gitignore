@@ -1,0 +1,28 @@
+# Virtual environment
+.venv/
+venv/
+
+# Dataset (large — download separately, see README)
+MOT17/
+data/MOT17/
+
+# Runtime artifacts
+data/*.db
+outputs/
+*.mp4
+
+# Model weights (auto-downloaded on first run)
+*.pt
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# OS / IDE / tooling
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.claude/

@@ -1,0 +1,24 @@
+# --------------------------------------------------------------------------- #
+# AI Footfall Tracking & Retail Analytics — dependencies
+# --------------------------------------------------------------------------- #
+# NOTE on PyTorch:
+#   torch/torchvision are NOT pinned here because the correct build depends on
+#   your hardware. Install them FIRST, separately.
+#
+#   GPU (NVIDIA, e.g. RTX 5060 / Blackwell needs CUDA 12.8):
+#     pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+#
+#   CPU-only:
+#     pip install torch torchvision
+#
+# Then install the rest with:
+#     pip install -r requirements.txt
+# --------------------------------------------------------------------------- #
+
+ultralytics>=8.3.0        # YOLO11 detection
+supervision>=0.22.0,<0.30 # ByteTrack + LineZone + annotators (ByteTrack removed in 0.30)
+opencv-python>=4.9.0      # image/video I/O
+numpy>=1.26.0
+pandas>=2.2.0             # analytics aggregation
+streamlit>=1.36.0         # dashboard
+plotly>=5.22.0            # charts
