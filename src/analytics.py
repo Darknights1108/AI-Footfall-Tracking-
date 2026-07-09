@@ -110,11 +110,18 @@ def crossings_over_time(
     return grouped[cols].sort_values("t")
 
 
-def occupancy_over_time(df: pd.DataFrame, fps: float) -> pd.DataFrame:
+def occupancy_over_time(
+    df: pd.DataFrame, fps: float, clip: bool = True
+) -> pd.DataFrame:
     """
     Running occupancy after each crossing, along the real video timeline.
 
     Returns a DataFrame with columns ``t`` (seconds) and ``occupancy``.
+
+    ``clip`` clamps occupancy at zero (a real space can't hold fewer than zero
+    people). Pass ``clip=False`` to show the *raw* net (in − out), which reveals
+    a systematic out > in bias as a downward drift instead of a flat line — used
+    for unreliable sources so the chart is diagnostic rather than misleading.
     """
     cols = ["t", "occupancy"]
     if df.empty:
@@ -123,9 +130,36 @@ def occupancy_over_time(df: pd.DataFrame, fps: float) -> pd.DataFrame:
     work = df.sort_values("frame_index").copy()
     work["t"] = elapsed_seconds(work, fps)
     step = work["direction"].map({"in": 1, "out": -1}).fillna(0)
-    # Running net occupancy, clamped at zero so it never goes negative.
-    work["occupancy"] = step.cumsum().clip(lower=0)
+    net = step.cumsum()
+    work["occupancy"] = net.clip(lower=0) if clip else net
     return work[cols]
+
+
+def counting_reliability(df: pd.DataFrame) -> tuple[bool, str]:
+    """
+    Sanity-check the counting for a source.
+
+    A real entrance that starts empty can never have cumulative "out" exceed
+    cumulative "in". If the running net (in − out) drops well below zero, the
+    counter is misbehaving for this source (usually track-ID fragmentation in a
+    dense or overhead scene). Returns ``(is_reliable, message)``.
+    """
+    if df.empty:
+        return True, ""
+
+    work = df.sort_values("frame_index")
+    net = work["direction"].map({"in": 1, "out": -1}).fillna(0).cumsum()
+    min_net = int(net.min()) if len(net) else 0
+
+    if min_net <= -config.COUNTING_UNRELIABLE_NET:
+        return False, (
+            f"Counting looks unreliable for this source: cumulative *out* exceeds "
+            f"*in* by up to {-min_net} people, which is impossible for a real "
+            f"entrance. This is typically track-ID fragmentation in a dense or "
+            f"overhead scene. The occupancy chart below shows the raw net "
+            f"(in − out) for diagnosis rather than a clamped, misleading flat line."
+        )
+    return True, ""
 
 
 def peak_flow(

@@ -288,7 +288,11 @@ st.caption(
 )
 
 timeline = analytics.crossings_over_time(df, fps)
-occ_curve = analytics.occupancy_over_time(df, fps)
+# A real entrance can't have cumulative out > in. When it does (e.g. the Mall
+# dataset, due to ID fragmentation), flag it and show the raw net so the bias is
+# visible instead of a flat, misleading line.
+reliable, reliability_msg = analytics.counting_reliability(df)
+occ_curve = analytics.occupancy_over_time(df, fps, clip=reliable)
 
 col_left, col_right = st.columns(2)
 
@@ -306,6 +310,8 @@ with col_left:
 
 with col_right:
     st.markdown("#### Occupancy Over Video Time")
+    if not reliable:
+        st.warning("⚠️ " + reliability_msg)
     occ_fig = go.Figure()
     occ_fig.add_trace(
         go.Scatter(
@@ -313,13 +319,13 @@ with col_right:
             y=occ_curve["occupancy"],
             mode="lines",
             name="Occupancy",
-            line=dict(width=3, shape="hv"),
+            line=dict(width=3, shape="hv", color="#d62728" if not reliable else None),
             fill="tozeroy",
         )
     )
     occ_fig.update_layout(
         xaxis_title="Elapsed video time (s)",
-        yaxis_title="People inside",
+        yaxis_title="People inside" if reliable else "Net (in − out), raw",
         margin=dict(l=10, r=10, t=10, b=10),
     )
     st.plotly_chart(occ_fig, use_container_width=True)

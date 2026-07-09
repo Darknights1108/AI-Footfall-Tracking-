@@ -98,3 +98,9 @@ OCCUPANCY_ALERT_THRESHOLD: int = 30
 
 # Trigger a low-traffic alert when total unique visitors falls below this value.
 LOW_TRAFFIC_THRESHOLD: int = 5
+
+# A real entrance that starts empty can never have cumulative "out" exceed
+# cumulative "in". If the running net (in - out) drops below this many people,
+# the counting is flagged as unreliable for that source — typically caused by
+# track-ID fragmentation in dense/overhead scenes (e.g. the Mall dataset).
+COUNTING_UNRELIABLE_NET: int = 10

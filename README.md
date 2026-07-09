@@ -164,6 +164,10 @@ Total In · Total Out · Occupancy · Crossings-over-time · Alerts · Insight
 - **SQLite persistence** — `footfall_events` and `processing_runs` tables.
 - **Real video timeline** — every temporal chart uses the true elapsed time in
   the clip (`frame_index ÷ fps`); no faked business-day clock.
+- **Counting-reliability check** — a real entrance can't have cumulative *out*
+  exceed *in*; when it does (e.g. ID fragmentation in dense/overhead scenes like
+  the Mall dataset), the dashboard flags the source and shows the raw net so the
+  bias is visible instead of a misleading flat line.
 - **Analytics** — totals, occupancy, unique visitors, crossings-over-time,
   running occupancy curve, busiest moment, overcrowding and low-traffic alerts,
   and a plain-English insight summary.
