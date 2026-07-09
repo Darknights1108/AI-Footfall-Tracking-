@@ -2,9 +2,10 @@
 .venv/
 venv/
 
-# Dataset (large — download separately, see README)
+# Datasets (large — download separately, see README)
 MOT17/
 data/MOT17/
+MallDataset/
 
 # Runtime artifacts
 data/*.db

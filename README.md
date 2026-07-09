@@ -149,9 +149,13 @@ Total In · Total Out · Occupancy · Crossings-over-time · Alerts · Insight
 
 ## ✨ Features
 
-- **MOT17 sequence loader** — reads `img1/` frames directly (no mp4 conversion),
-  parses `seqinfo.ini` for FPS/resolution, processes frames in order, and
-  attaches a simulated timestamp to each.
+- **Flexible input loader** — accepts a **MOT17 sequence** (`img1/` + `seqinfo.ini`),
+  **any image folder** (arbitrary file names, e.g. the Mall dataset's
+  `seq_000001.jpg`), or a **video file** (`.mp4/.avi/.mov/.mkv`), all through one
+  `open_source()` factory.
+- **Process new data from the dashboard** — a "➕ Process new data" panel lets you
+  point at a source, click **Run**, watch a live progress bar, and see results —
+  no command line needed.
 - **Person-only detection** — YOLO11 filtered to the COCO person class with a
   configurable confidence threshold.
 - **Stable multi-object tracking** — ByteTrack unique IDs feeding the counter.
@@ -177,7 +181,7 @@ ai-footfall-analytics/
 │   └── dashboard.py          # Streamlit dashboard
 ├── src/
 │   ├── config.py             # paths, thresholds, defaults
-│   ├── mot17_loader.py       # MOT17 sequence loader
+│   ├── frame_source.py       # input loaders (MOT17 / image folder / video)
 │   ├── detector.py           # YOLO11 person detection
 │   ├── tracker.py            # ByteTrack tracking
 │   ├── counter.py            # Supervision LineZone in/out counting
@@ -264,6 +268,9 @@ Options:
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--sequence` | Path to a MOT17 sequence | *(required)* |
+| `--source` (`--sequence`) | MOT17 seq dir, image folder, **or** a video file | *(required)* |
+| `--name` | Label for this source (DB + output filename) | folder/file name |
+| `--fps` | Override frame rate (image folders / videos with no metadata) | from metadata |
 | `--line` | `horizontal` or `vertical` counting line | `horizontal` |
 | `--line-position` | Line position as a fraction of the frame (0–1) | `0.5` |
 | `--swap-in-out` | Swap the in/out direction mapping | off |
@@ -273,6 +280,25 @@ Options:
 
 The script prints a final summary (sequence, frames, total in/out, occupancy,
 unique tracks, output video path) and writes events to `data/footfall.db`.
+
+### Processing your own data (image folder or video)
+
+The pipeline is not limited to MOT17 — point `--source` at **any image folder**
+or a **video file**:
+
+```bash
+# An image folder (e.g. the Mall crowd-counting dataset)
+python scripts/process_mot17.py --source MallDataset/frames/frames --name Mall \
+  --line horizontal --export-video
+
+# A video file
+python scripts/process_mot17.py --source path/to/clip.mp4 --name MyStore \
+  --line vertical --export-video
+```
+
+Or do it **without the command line**: launch the dashboard and use the
+**➕ Process new data** panel in the sidebar — enter a source path, choose the
+line, click **Run pipeline**, and watch the progress bar until results appear.
 
 ### Choosing a sequence and line orientation
 

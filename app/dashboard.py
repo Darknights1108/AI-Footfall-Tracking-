@@ -85,6 +85,69 @@ def get_preview_frames(video_path: str, n: int = 3):
 
 
 # --------------------------------------------------------------------------- #
+# "Process new data" panel — input a source, run the pipeline, watch progress
+# --------------------------------------------------------------------------- #
+def _run_processing(source, name, line, position, conf, export_video):
+    """Run the full pipeline on a new source with a live progress bar."""
+    # Lazy import so torch/ultralytics only load when the user actually runs.
+    from src.video_processor import process_sequence
+
+    progress = st.sidebar.progress(0.0, text="Loading model…")
+
+    def on_progress(done, total):
+        # Throttle UI updates to keep the websocket light.
+        if total and (done % 10 == 0 or done == total):
+            progress.progress(min(done / total, 1.0), text=f"Processing {done}/{total} frames")
+
+    try:
+        summary = process_sequence(
+            sequence_path=source,
+            line_orientation=line,
+            line_position=position,
+            conf_threshold=conf,
+            export_video=export_video,
+            name=(name or None),
+            progress_callback=on_progress,
+            log=False,
+        )
+    except (FileNotFoundError, ValueError, IOError) as exc:
+        progress.empty()
+        st.sidebar.error(f"Could not process source:\n\n{exc}")
+        return
+
+    progress.empty()
+    st.cache_data.clear()
+    st.session_state["just_processed"] = summary["sequence_name"]
+    st.sidebar.success(
+        f"Done: **{summary['sequence_name']}** — "
+        f"{summary['total_in']} in / {summary['total_out']} out, "
+        f"{summary['unique_tracks']} tracks over {summary['total_frames']} frames."
+    )
+    st.rerun()
+
+
+def render_process_panel():
+    """Render the sidebar expander for processing a new input source."""
+    with st.sidebar.expander("➕ Process new data", expanded=False):
+        st.caption("Point at a MOT17 sequence, an image folder, or a video file.")
+        source = st.text_input(
+            "Source path",
+            value=str(config.MOT17_ROOT / "train" / "MOT17-09-FRCNN"),
+            help="e.g. MallDataset/frames/frames  or  path/to/clip.mp4",
+        )
+        name = st.text_input("Label (optional)", value="", placeholder="e.g. Mall")
+        col_a, col_b = st.columns(2)
+        line = col_a.selectbox("Line", ["horizontal", "vertical"], key="proc_line")
+        position = col_b.slider("Position", 0.0, 1.0, 0.5, 0.05, key="proc_pos")
+        conf = st.slider(
+            "Confidence", 0.1, 0.9, float(config.CONF_THRESHOLD), 0.05, key="proc_conf"
+        )
+        export_video = st.checkbox("Export annotated video", value=True)
+        if st.button("▶ Run pipeline", type="primary", use_container_width=True):
+            _run_processing(source, name, line, position, conf, export_video)
+
+
+# --------------------------------------------------------------------------- #
 # Header
 # --------------------------------------------------------------------------- #
 st.title("🚶 AI Footfall Tracking & Retail Analytics Dashboard")
@@ -95,13 +158,20 @@ st.caption(
 
 sequences = get_sequences()
 
+# The "Process new data" panel is always available — even with an empty DB.
+with st.sidebar:
+    st.header("Controls")
+render_process_panel()
+
 # Empty-database guard: guide the user instead of crashing.
 if not sequences:
     st.info(
-        "No footfall data found yet.\n\n"
-        "Process a MOT17 sequence first, for example:\n\n"
+        "No footfall data yet. Use **➕ Process new data** in the sidebar to run "
+        "your first source (a MOT17 sequence, an image folder, or a video), or "
+        "from the command line:\n\n"
         "```\npython scripts/process_mot17.py "
-        "--sequence MOT17/train/MOT17-09-FRCNN --line horizontal --export-video\n```"
+        "--source MallDataset/frames/frames --name Mall --line horizontal "
+        "--export-video\n```"
     )
     st.stop()
 
@@ -110,8 +180,12 @@ if not sequences:
 # Sidebar controls
 # --------------------------------------------------------------------------- #
 with st.sidebar:
-    st.header("Controls")
-    selected = st.selectbox("Dataset / sequence", options=sequences)
+    # Auto-select a sequence that was just processed this session.
+    default_idx = 0
+    just = st.session_state.get("just_processed")
+    if just in sequences:
+        default_idx = sequences.index(just)
+    selected = st.selectbox("Dataset / sequence", options=sequences, index=default_idx)
     st.markdown("---")
     st.markdown("**Alert thresholds**")
     occ_threshold = st.number_input(

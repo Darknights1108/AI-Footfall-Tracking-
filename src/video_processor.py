@@ -22,7 +22,7 @@ import supervision as sv
 from . import config, database
 from .counter import LineCrossingCounter
 from .detector import PersonDetector
-from .mot17_loader import Mot17SequenceLoader
+from .frame_source import open_source
 from .tracker import PersonTracker
 
 
@@ -108,17 +108,30 @@ def process_sequence(
     export_video: bool = False,
     output_path: str | Path | None = None,
     db_path: str | Path | None = None,
+    name: str | None = None,
+    fps: float | None = None,
     progress_every: int = 50,
+    progress_callback=None,
     log: bool = True,
 ) -> dict:
     """
-    Process one MOT17 sequence end-to-end.
+    Process one input source (MOT17 sequence, image folder, or video) end-to-end.
+
+    Parameters
+    ----------
+    sequence_path:
+        Path to a MOT17 sequence dir, an image folder, or a video file.
+    name, fps:
+        Optional label / frame-rate overrides for non-MOT17 sources.
+    progress_callback:
+        Optional ``callable(frames_done, total_frames)`` invoked each frame,
+        used by the dashboard to drive a progress bar.
 
     Returns a summary dict:
     ``{sequence_name, total_frames, total_in, total_out, occupancy,
        unique_tracks, output_video}``.
     """
-    loader = Mot17SequenceLoader(sequence_path, start_time=start_time)
+    loader = open_source(sequence_path, start_time=start_time, name=name, fps=fps)
     info = loader.info
 
     detector = PersonDetector(conf_threshold=conf_threshold)
@@ -184,6 +197,9 @@ def process_sequence(
                 annotated, counter.total_in, counter.total_out, info.name
             )
             writer.write(annotated)
+
+        if progress_callback is not None:
+            progress_callback(frames_processed, len(loader))
 
         if log and progress_every and frames_processed % progress_every == 0:
             print(

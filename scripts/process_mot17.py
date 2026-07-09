@@ -25,12 +25,28 @@ from src.video_processor import process_sequence
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Process a MOT17 sequence: detect, track, and count footfall."
+        description="Process an input source (MOT17 sequence, image folder, or "
+        "video file): detect, track, and count footfall."
     )
     parser.add_argument(
         "--sequence",
+        "--source",
+        dest="sequence",
         required=True,
-        help="Path to a MOT17 sequence, e.g. MOT17/train/MOT17-11-FRCNN",
+        help="Path to a MOT17 sequence dir, an image folder (e.g. "
+        "MallDataset/frames/frames), or a video file (.mp4/.avi/…).",
+    )
+    parser.add_argument(
+        "--name",
+        default=None,
+        help="Label for this source (used for the DB + output filename). "
+        "Defaults to the folder/file name.",
+    )
+    parser.add_argument(
+        "--fps",
+        type=float,
+        default=None,
+        help="Override frame rate (for image folders / videos with no metadata).",
     )
     parser.add_argument(
         "--line",
@@ -81,6 +97,8 @@ def main() -> int:
             start_time=args.start_time,
             conf_threshold=args.conf,
             export_video=args.export_video,
+            name=args.name,
+            fps=args.fps,
         )
     except FileNotFoundError as exc:
         print(f"[ERROR] {exc}", file=sys.stderr)
